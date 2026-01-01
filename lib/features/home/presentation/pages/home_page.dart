@@ -123,6 +123,15 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _refreshPosts() async {
+    // Scroll to top
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0.0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+
     setState(() {
       _currentPage = 1;
       _isLoadingMore = false;
@@ -457,12 +466,7 @@ class _HomePageState extends State<HomePage> {
         onTap: (index) {
           if (index == 0) {
             // Home - refresh posts and stories
-            setState(() {
-              _currentPage = 1;
-              _isLoadingMore = false;
-            });
-            context.read<PostBloc>().add(GetPostsEvent(page: _currentPage));
-            context.read<PostBloc>().add(const GetStoriesEvent());
+            _refreshPosts();
           } else if (index == 1) {
             // Create Post
             Navigator.push(
