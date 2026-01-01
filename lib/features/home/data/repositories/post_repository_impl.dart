@@ -59,22 +59,6 @@ class PostRepositoryImpl implements PostRepository {
     }
   }
 
-  // Background fetch and cache
-  Future<void> _fetchAndCachePosts(int page, int limit) async {
-    try {
-      final isConnected = await connectivityService.isConnected();
-      if (isConnected) {
-        final posts = await remoteDataSource.getPosts(page: page, limit: limit);
-        if (posts.isNotEmpty) {
-          await localStorageService.cachePosts(posts);
-        }
-      }
-    } catch (e) {
-      // Silently fail background fetch
-      print('Background fetch failed: $e');
-    }
-  }
-
   @override
   Future<Either<Failure, List<StoryEntity>>> getStories() async {
     try {
@@ -109,22 +93,6 @@ class PostRepositoryImpl implements PostRepository {
         return Right(cachedStories);
       }
       return Left(ServerFailure(e.toString()));
-    }
-  }
-
-  // Background fetch and cache for stories
-  Future<void> _fetchAndCacheStories() async {
-    try {
-      final isConnected = await connectivityService.isConnected();
-      if (isConnected) {
-        final stories = await remoteDataSource.getStories();
-        if (stories.isNotEmpty) {
-          await localStorageService.cacheStories(stories);
-        }
-      }
-    } catch (e) {
-      // Silently fail background fetch
-      print('Background fetch for stories failed: $e');
     }
   }
 
