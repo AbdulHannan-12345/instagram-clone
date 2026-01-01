@@ -39,3 +39,16 @@ class SignOutEvent extends AuthEvent {
 class CheckCurrentUserEvent extends AuthEvent {
   const CheckCurrentUserEvent();
 }
+
+class UpdateViewedStoriesEvent extends AuthEvent {
+  final String uid;
+  final List<String> viewedStories;
+
+  const UpdateViewedStoriesEvent({
+    required this.uid,
+    required this.viewedStories,
+  });
+
+  @override
+  List<Object?> get props => [uid, viewedStories];
+}

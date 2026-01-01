@@ -5,12 +5,14 @@ import 'package:flutter_test_app/features/home/data/models/story_model.dart';
 class LocalStorageService {
   static const String _postsBox = 'offline_posts_cache';
   static const String _storiesBox = 'offline_stories_cache';
+  static const String _viewedStoriesBox = 'viewed_stories_cache';
 
   /// Initialize Hive
   static Future<void> init() async {
     await Hive.initFlutter();
     await Hive.openBox(_postsBox);
     await Hive.openBox(_storiesBox);
+    await Hive.openBox(_viewedStoriesBox);
   }
 
   /// Cache posts to local storage
@@ -132,6 +134,60 @@ class LocalStorageService {
       return box.get('cached_stories') != null;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// Save viewed stories (user IDs)
+  Future<void> saveViewedStories(Set<String> viewedUserIds) async {
+    try {
+      final box = Hive.box(_viewedStoriesBox);
+      await box.put('viewed_stories', viewedUserIds.toList());
+    } catch (e) {
+      print('Error saving viewed stories: $e');
+    }
+  }
+
+  /// Load viewed stories (user IDs)
+  Future<Set<String>> loadViewedStories() async {
+    try {
+      final box = Hive.box(_viewedStoriesBox);
+      final viewedList = box.get('viewed_stories') as List<dynamic>?;
+      if (viewedList == null) return {};
+      return viewedList.map((id) => id.toString()).toSet();
+    } catch (e) {
+      print('Error loading viewed stories: $e');
+      return {};
+    }
+  }
+
+  /// Add viewed story for a user
+  Future<void> addViewedStory(String userId) async {
+    try {
+      final currentViewed = await loadViewedStories();
+      currentViewed.add(userId);
+      await saveViewedStories(currentViewed);
+    } catch (e) {
+      print('Error adding viewed story: $e');
+    }
+  }
+
+  /// Check if story is viewed for a user
+  Future<bool> isStoryViewed(String userId) async {
+    try {
+      final viewedStories = await loadViewedStories();
+      return viewedStories.contains(userId);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Clear viewed stories
+  Future<void> clearViewedStories() async {
+    try {
+      final box = Hive.box(_viewedStoriesBox);
+      await box.clear();
+    } catch (e) {
+      print('Error clearing viewed stories: $e');
     }
   }
 }

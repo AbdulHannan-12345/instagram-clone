@@ -99,4 +99,20 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> updateViewedStories({
+    required String uid,
+    required List<String> viewedStories,
+  }) async {
+    try {
+      await remoteDataSource.updateViewedStories(
+        uid: uid,
+        viewedStories: viewedStories,
+      );
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
 }

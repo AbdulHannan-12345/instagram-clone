@@ -6,14 +6,18 @@ import 'package:cached_network_image/cached_network_image.dart';
 class StoryWidget extends StatelessWidget {
   final StoryEntity story;
   final bool isOwnStory;
+  final bool isViewed;
   final VoidCallback? onAddStory;
+  final VoidCallback? onStoriesViewed;
   final List<StoryEntity> userStories;
 
   const StoryWidget({
     super.key,
     required this.story,
     this.isOwnStory = false,
+    this.isViewed = false,
     this.onAddStory,
+    this.onStoriesViewed,
     this.userStories = const [],
   });
 
@@ -28,7 +32,10 @@ class StoryWidget extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => StoryViewerPage(stories: userStories),
+                  builder: (context) => StoryViewerPage(
+                    stories: userStories,
+                    onStoriesViewed: onStoriesViewed,
+                  ),
                 ),
               );
             }
@@ -127,7 +134,10 @@ class StoryWidget extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => StoryViewerPage(stories: userStories),
+              builder: (context) => StoryViewerPage(
+                stories: userStories,
+                onStoriesViewed: onStoriesViewed,
+              ),
             ),
           );
         },
@@ -138,7 +148,10 @@ class StoryWidget extends StatelessWidget {
               height: 86,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.pink, width: 2),
+                border: Border.all(
+                  color: isViewed ? Colors.transparent : Colors.pink,
+                  width: 2,
+                ),
               ),
               child: CachedNetworkImage(
                 imageUrl: story.userImage,

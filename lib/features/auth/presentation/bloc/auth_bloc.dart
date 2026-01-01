@@ -3,6 +3,7 @@ import 'package:flutter_test_app/features/auth/domain/usecases/get_current_user_
 import 'package:flutter_test_app/features/auth/domain/usecases/sign_in_usecase.dart';
 import 'package:flutter_test_app/features/auth/domain/usecases/sign_out_usecase.dart';
 import 'package:flutter_test_app/features/auth/domain/usecases/sign_up_usecase.dart';
+import 'package:flutter_test_app/features/auth/domain/usecases/update_viewed_stories_usecase.dart';
 import 'package:flutter_test_app/features/auth/presentation/bloc/auth_event.dart';
 import 'package:flutter_test_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:flutter_test_app/core/usecase/usecase.dart';
@@ -12,17 +13,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final SignInUseCase signInUseCase;
   final SignOutUseCase signOutUseCase;
   final GetCurrentUserUseCase getCurrentUserUseCase;
+  final UpdateViewedStoriesUseCase updateViewedStoriesUseCase;
 
   AuthBloc({
     required this.signUpUseCase,
     required this.signInUseCase,
     required this.signOutUseCase,
     required this.getCurrentUserUseCase,
+    required this.updateViewedStoriesUseCase,
   }) : super(const AuthInitial()) {
     on<SignUpEvent>(_onSignUp);
     on<SignInEvent>(_onSignIn);
     on<SignOutEvent>(_onSignOut);
     on<CheckCurrentUserEvent>(_onCheckCurrentUser);
+    on<UpdateViewedStoriesEvent>(_onUpdateViewedStories);
   }
 
   Future<void> _onSignUp(SignUpEvent event, Emitter<AuthState> emit) async {
@@ -77,5 +81,29 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(const AuthUnauthenticated());
       }
     });
+  }
+
+  Future<void> _onUpdateViewedStories(
+    UpdateViewedStoriesEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    final result = await updateViewedStoriesUseCase(
+      UpdateViewedStoriesParams(
+        uid: event.uid,
+        viewedStories: event.viewedStories,
+      ),
+    );
+
+    // We don't emit a new state here since this is a background operation
+    // The UI will handle the result through callbacks
+    result.fold(
+      (failure) {
+        // Could emit an error state if needed, but for now just log
+        // This is a silent operation
+      },
+      (_) {
+        // Success - no state change needed
+      },
+    );
   }
 }

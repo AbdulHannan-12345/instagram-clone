@@ -28,6 +28,11 @@ abstract class AuthRemoteDataSource {
     required String name,
     required File imageFile,
   });
+
+  Future<void> updateViewedStories({
+    required String uid,
+    required List<String> viewedStories,
+  });
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -148,6 +153,20 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       await firestore.collection('users').doc(uid).update({
         'name': name,
         'profileImageUrl': imageUrl,
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> updateViewedStories({
+    required String uid,
+    required List<String> viewedStories,
+  }) async {
+    try {
+      await firestore.collection('users').doc(uid).update({
+        'viewedStories': viewedStories,
       });
     } catch (e) {
       rethrow;

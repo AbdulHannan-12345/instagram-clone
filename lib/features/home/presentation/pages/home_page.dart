@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_test_app/core/utils/connectivity_service.dart';
+import 'package:flutter_test_app/core/utils/local_storage_service.dart';
 import 'package:flutter_test_app/features/auth/presentation/bloc/auth_bloc.dart';
-// import 'package:flutter_test_app/features/auth/presentation/bloc/auth_event.dart';
+import 'package:flutter_test_app/features/auth/presentation/bloc/auth_event.dart';
 import 'package:flutter_test_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:flutter_test_app/features/home/domain/entities/story_entity.dart';
 import 'package:flutter_test_app/features/home/presentation/bloc/post_bloc.dart';
@@ -26,14 +27,19 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final ScrollController _scrollController = ScrollController();
   final ConnectivityService _connectivityService = ConnectivityService();
+  final LocalStorageService _localStorageService = LocalStorageService();
   int _currentPage = 1;
   bool _isLoadingMore = false;
   bool _isOffline = false;
+  final Set<String> _viewedStories = {}; // Track viewed user IDs
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
+    // Load viewed stories first
+    _loadViewedStories();
+
     // Load posts and stories
     context.read<PostBloc>().add(GetPostsEvent(page: _currentPage));
     context.read<PostBloc>().add(const GetStoriesEvent());
@@ -66,6 +72,15 @@ class _HomePageState extends State<HomePage> {
     if (mounted) {
       setState(() {
         _isOffline = !isConnected;
+      });
+    }
+  }
+
+  Future<void> _loadViewedStories() async {
+    final viewedStories = await _localStorageService.loadViewedStories();
+    if (mounted) {
+      setState(() {
+        _viewedStories.addAll(viewedStories);
       });
     }
   }
@@ -197,98 +212,165 @@ class _HomePageState extends State<HomePage> {
               // Stories Section
               SizedBox(
                 height: 130,
-                child: BlocBuilder<AuthBloc, AuthState>(
-                  builder: (context, authState) {
-                    return BlocBuilder<PostBloc, PostState>(
-                      builder: (context, postState) {
-                        List<StoryEntity> allStories = [];
+                child: BlocListener<AuthBloc, AuthState>(
+                  listener: (context, authState) {
+                    // When user becomes authenticated, merge Firebase viewed stories with local ones
+                    if (authState is AuthSuccess &&
+                        authState.user.viewedStories != null) {
+                      setState(() {
+                        _viewedStories.addAll(
+                          authState.user.viewedStories!.toSet(),
+                        );
+                      });
+                      // Save merged stories to local storage
+                      _localStorageService.saveViewedStories(_viewedStories);
+                    }
+                  },
+                  child: BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, authState) {
+                      return BlocBuilder<PostBloc, PostState>(
+                        builder: (context, postState) {
+                          List<StoryEntity> allStories = [];
 
-                        if (postState is StoriesLoaded) {
-                          allStories = postState.stories;
-                        } else if (postState is PostAndStoriesLoaded) {
-                          allStories = postState.stories;
-                        }
+                          if (postState is StoriesLoaded) {
+                            allStories = postState.stories;
+                          } else if (postState is PostAndStoriesLoaded) {
+                            allStories = postState.stories;
+                          }
 
-                        // Group stories by user
-                        final groupedStories = _groupStoriesByUser(allStories);
-
-                        if (authState is AuthSuccess) {
-                          final currentUserId = authState.user.uid;
-                          final userStories =
-                              groupedStories[currentUserId] ?? [];
-
-                          // Create own story entity
-                          final ownStory = StoryEntity(
-                            id: 'own_story',
-                            userId: currentUserId,
-                            userName: authState.user.name ?? 'User',
-                            userImage:
-                                authState.user.profileImageUrl ??
-                                'https://i.pravatar.cc/150?img=1',
-                            imageUrl: userStories.isNotEmpty
-                                ? userStories.first.imageUrl
-                                : '',
-                            createdAt: DateTime.now(),
+                          // Group stories by user
+                          final groupedStories = _groupStoriesByUser(
+                            allStories,
                           );
 
-                          // Get other users' stories (one representative per user)
+                          if (authState is AuthSuccess) {
+                            final currentUserId = authState.user.uid;
+                            final userStories =
+                                groupedStories[currentUserId] ?? [];
+
+                            // Create own story entity
+                            final ownStory = StoryEntity(
+                              id: 'own_story',
+                              userId: currentUserId,
+                              userName: authState.user.name ?? 'User',
+                              userImage:
+                                  authState.user.profileImageUrl ??
+                                  'https://i.pravatar.cc/150?img=1',
+                              imageUrl: userStories.isNotEmpty
+                                  ? userStories.first.imageUrl
+                                  : '',
+                              createdAt: DateTime.now(),
+                            );
+
+                            // Get other users' stories (one representative per user)
+                            final otherUsersStories = groupedStories.entries
+                                .where((entry) => entry.key != currentUserId)
+                                .map((entry) => entry.value.first)
+                                .toList();
+
+                            return ListView(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              children: [
+                                // Own story first
+                                StoryWidget(
+                                  story: ownStory,
+                                  isOwnStory: true,
+                                  userStories: userStories,
+                                  onAddStory: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const AddStoryPage(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                // Other users' stories
+                                ...otherUsersStories.map(
+                                  (story) => StoryWidget(
+                                    story: story,
+                                    isViewed: _viewedStories.contains(
+                                      story.userId,
+                                    ),
+                                    userStories:
+                                        groupedStories[story.userId] ?? [story],
+                                    onStoriesViewed: () {
+                                      setState(() {
+                                        _viewedStories.add(story.userId);
+                                      });
+                                      _localStorageService.addViewedStory(
+                                        story.userId,
+                                      );
+
+                                      // Sync with Firebase if user is authenticated
+                                      final authState = context
+                                          .read<AuthBloc>()
+                                          .state;
+                                      if (authState is AuthSuccess) {
+                                        context.read<AuthBloc>().add(
+                                          UpdateViewedStoriesEvent(
+                                            uid: authState.user.uid,
+                                            viewedStories: _viewedStories
+                                                .toList(),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+
+                          // Show stories even if not authenticated
                           final otherUsersStories = groupedStories.entries
-                              .where((entry) => entry.key != currentUserId)
                               .map((entry) => entry.value.first)
                               .toList();
 
                           return ListView(
                             scrollDirection: Axis.horizontal,
                             padding: const EdgeInsets.symmetric(vertical: 8),
-                            children: [
-                              // Own story first
-                              StoryWidget(
-                                story: ownStory,
-                                isOwnStory: true,
-                                userStories: userStories,
-                                onAddStory: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const AddStoryPage(),
+                            children: otherUsersStories
+                                .map(
+                                  (story) => StoryWidget(
+                                    story: story,
+                                    isViewed: _viewedStories.contains(
+                                      story.userId,
                                     ),
-                                  );
-                                },
-                              ),
-                              // Other users' stories
-                              ...otherUsersStories.map(
-                                (story) => StoryWidget(
-                                  story: story,
-                                  userStories:
-                                      groupedStories[story.userId] ?? [story],
-                                ),
-                              ),
-                            ],
+                                    userStories:
+                                        groupedStories[story.userId] ?? [story],
+                                    onStoriesViewed: () {
+                                      setState(() {
+                                        _viewedStories.add(story.userId);
+                                      });
+                                      _localStorageService.addViewedStory(
+                                        story.userId,
+                                      );
+
+                                      // Sync with Firebase if user is authenticated
+                                      final authState = context
+                                          .read<AuthBloc>()
+                                          .state;
+                                      if (authState is AuthSuccess) {
+                                        context.read<AuthBloc>().add(
+                                          UpdateViewedStoriesEvent(
+                                            uid: authState.user.uid,
+                                            viewedStories: _viewedStories
+                                                .toList(),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                )
+                                .toList(),
                           );
-                        }
-
-                        // Show stories even if not authenticated
-                        final otherUsersStories = groupedStories.entries
-                            .map((entry) => entry.value.first)
-                            .toList();
-
-                        return ListView(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          children: otherUsersStories
-                              .map(
-                                (story) => StoryWidget(
-                                  story: story,
-                                  userStories:
-                                      groupedStories[story.userId] ?? [story],
-                                ),
-                              )
-                              .toList(),
-                        );
-                      },
-                    );
-                  },
+                        },
+                      );
+                    },
+                  ),
                 ),
               ),
               Divider(color: Colors.grey[300]),

@@ -30,4 +30,9 @@ abstract class AuthRepository {
     required String name,
     required File imageFile,
   });
+
+  Future<Either<Failure, void>> updateViewedStories({
+    required String uid,
+    required List<String> viewedStories,
+  });
 }

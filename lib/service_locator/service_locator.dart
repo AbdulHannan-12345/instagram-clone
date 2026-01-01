@@ -10,6 +10,7 @@ import 'package:flutter_test_app/features/auth/domain/usecases/get_current_user_
 import 'package:flutter_test_app/features/auth/domain/usecases/sign_in_usecase.dart';
 import 'package:flutter_test_app/features/auth/domain/usecases/sign_out_usecase.dart';
 import 'package:flutter_test_app/features/auth/domain/usecases/sign_up_usecase.dart';
+import 'package:flutter_test_app/features/auth/domain/usecases/update_viewed_stories_usecase.dart';
 import 'package:flutter_test_app/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flutter_test_app/features/home/data/datasources/post_remote_data_source.dart';
 import 'package:flutter_test_app/features/home/data/repositories/post_repository_impl.dart';
@@ -58,6 +59,9 @@ Future<void> setupServiceLocator() async {
   getIt.registerSingleton<GetCurrentUserUseCase>(
     GetCurrentUserUseCase(repository: getIt<AuthRepository>()),
   );
+  getIt.registerSingleton<UpdateViewedStoriesUseCase>(
+    UpdateViewedStoriesUseCase(repository: getIt<AuthRepository>()),
+  );
 
   // Auth BLoC
   getIt.registerSingleton<AuthBloc>(
@@ -66,6 +70,7 @@ Future<void> setupServiceLocator() async {
       signInUseCase: getIt<SignInUseCase>(),
       signOutUseCase: getIt<SignOutUseCase>(),
       getCurrentUserUseCase: getIt<GetCurrentUserUseCase>(),
+      updateViewedStoriesUseCase: getIt<UpdateViewedStoriesUseCase>(),
     ),
   );
 

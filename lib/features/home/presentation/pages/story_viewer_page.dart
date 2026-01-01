@@ -5,8 +5,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 class StoryViewerPage extends StatefulWidget {
   final List<StoryEntity> stories;
+  final VoidCallback? onStoriesViewed;
 
-  const StoryViewerPage({super.key, required this.stories});
+  const StoryViewerPage({
+    super.key,
+    required this.stories,
+    this.onStoriesViewed,
+  });
 
   @override
   State<StoryViewerPage> createState() => _StoryViewerPageState();
@@ -57,6 +62,8 @@ class _StoryViewerPageState extends State<StoryViewerPage>
     if (_currentStoryIndex < widget.stories.length - 1) {
       _animateToStory(_currentStoryIndex + 1);
     } else {
+      // All stories viewed - mark as viewed
+      widget.onStoriesViewed?.call();
       _timer?.cancel();
       Navigator.pop(context);
     }
