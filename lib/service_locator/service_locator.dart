@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get_it/get_it.dart';
 import 'package:flutter_test_app/core/utils/connectivity_service.dart';
+import 'package:flutter_test_app/core/utils/image_preloader_service.dart';
 import 'package:flutter_test_app/core/utils/local_storage_service.dart';
 import 'package:flutter_test_app/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:flutter_test_app/features/auth/data/repositories/auth_repository_impl.dart';
@@ -25,6 +26,7 @@ Future<void> setupServiceLocator() async {
   // Core Services
   getIt.registerSingleton<ConnectivityService>(ConnectivityService());
   getIt.registerSingleton<LocalStorageService>(LocalStorageService());
+  getIt.registerSingleton<ImagePreloaderService>(ImagePreloaderService());
 
   // Firebase
   final firebaseAuth = FirebaseAuth.instance;
@@ -85,6 +87,7 @@ Future<void> setupServiceLocator() async {
       remoteDataSource: getIt<PostRemoteDataSource>(),
       localStorageService: getIt<LocalStorageService>(),
       connectivityService: getIt<ConnectivityService>(),
+      imagePreloaderService: getIt<ImagePreloaderService>(),
     ),
   );
 

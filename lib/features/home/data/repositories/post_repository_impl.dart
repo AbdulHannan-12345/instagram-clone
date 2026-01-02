@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:dartz/dartz.dart';
 import 'package:flutter_test_app/core/error/failures.dart';
 import 'package:flutter_test_app/core/utils/connectivity_service.dart';
+import 'package:flutter_test_app/core/utils/image_preloader_service.dart';
 import 'package:flutter_test_app/core/utils/local_storage_service.dart';
 import 'package:flutter_test_app/features/home/data/datasources/post_remote_data_source.dart';
 import 'package:flutter_test_app/features/home/data/models/post_model.dart';
@@ -14,11 +15,13 @@ class PostRepositoryImpl implements PostRepository {
   final PostRemoteDataSource remoteDataSource;
   final LocalStorageService localStorageService;
   final ConnectivityService connectivityService;
+  final ImagePreloaderService imagePreloaderService;
 
   PostRepositoryImpl({
     required this.remoteDataSource,
     required this.localStorageService,
     required this.connectivityService,
+    required this.imagePreloaderService,
   });
 
   @override
@@ -38,11 +41,35 @@ class PostRepositoryImpl implements PostRepository {
           await localStorageService.cachePosts(posts);
         }
 
+        // Preload images in background (don't await to avoid blocking)
+        if (posts.isNotEmpty) {
+          final postMaps = posts
+              .map(
+                (post) => {
+                  'imageUrl': post.imageUrl,
+                  'userImage': post.userImage,
+                },
+              )
+              .toList();
+          imagePreloaderService.preloadPostImages(postMaps);
+        }
+
         return Right(posts);
       } catch (e) {
         // On timeout or error, return cached data as fallback
         final cachedPosts = await localStorageService.getCachedPosts();
         if (cachedPosts.isNotEmpty) {
+          // Preload cached images in background
+          final postMaps = cachedPosts
+              .map(
+                (post) => {
+                  'imageUrl': post.imageUrl,
+                  'userImage': post.userImage,
+                },
+              )
+              .toList();
+          imagePreloaderService.preloadPostImages(postMaps);
+
           return Right(cachedPosts);
         }
         return Left(
@@ -53,6 +80,17 @@ class PostRepositoryImpl implements PostRepository {
       // On error, try to return cached data
       final cachedPosts = await localStorageService.getCachedPosts();
       if (cachedPosts.isNotEmpty) {
+        // Preload cached images in background
+        final postMaps = cachedPosts
+            .map(
+              (post) => {
+                'imageUrl': post.imageUrl,
+                'userImage': post.userImage,
+              },
+            )
+            .toList();
+        imagePreloaderService.preloadPostImages(postMaps);
+
         return Right(cachedPosts);
       }
       return Left(ServerFailure(e.toString()));
@@ -73,11 +111,35 @@ class PostRepositoryImpl implements PostRepository {
           await localStorageService.cacheStories(stories);
         }
 
+        // Preload images in background (don't await to avoid blocking)
+        if (stories.isNotEmpty) {
+          final storyMaps = stories
+              .map(
+                (story) => {
+                  'imageUrl': story.imageUrl,
+                  'userImage': story.userImage,
+                },
+              )
+              .toList();
+          imagePreloaderService.preloadStoryImages(storyMaps);
+        }
+
         return Right(stories);
       } catch (e) {
         // On timeout or error, return cached data as fallback
         final cachedStories = await localStorageService.getCachedStories();
         if (cachedStories.isNotEmpty) {
+          // Preload cached images in background
+          final storyMaps = cachedStories
+              .map(
+                (story) => {
+                  'imageUrl': story.imageUrl,
+                  'userImage': story.userImage,
+                },
+              )
+              .toList();
+          imagePreloaderService.preloadStoryImages(storyMaps);
+
           return Right(cachedStories);
         }
         return Left(
@@ -90,6 +152,17 @@ class PostRepositoryImpl implements PostRepository {
       // On error, try to return cached data
       final cachedStories = await localStorageService.getCachedStories();
       if (cachedStories.isNotEmpty) {
+        // Preload cached images in background
+        final storyMaps = cachedStories
+            .map(
+              (story) => {
+                'imageUrl': story.imageUrl,
+                'userImage': story.userImage,
+              },
+            )
+            .toList();
+        imagePreloaderService.preloadStoryImages(storyMaps);
+
         return Right(cachedStories);
       }
       return Left(ServerFailure(e.toString()));
